@@ -6,6 +6,7 @@ on:
       - 'src/axisymmetric_*.h'
       - 'src/grain_beam_reference.h'
       - 'src/grain_maxwellian_reference.h'
+      - 'src/grain_poisson_reference.h'
       - 'src/KOKKOS/kokkos_*grain*.h'
       - 'tests/axisymmetric_rigid/**'
       - '.github/workflows/axisymmetric-grain-tests.yml'
