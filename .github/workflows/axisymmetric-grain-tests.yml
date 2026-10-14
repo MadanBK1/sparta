@@ -76,4 +76,5 @@ jobs:
       - name: Confirm SPARTA executable exists
         run: |
           find /tmp/sparta-grain-audit-build -type f \
-            \( -name 'spa_*' -o -name 'sparta' \) -executable -print
+            \( -name 'spa_*' -o -name 'sparta' \) -executable -print | tee /tmp/sparta-grain-executables.txt
+          test -s /tmp/sparta-grain-executables.txt
