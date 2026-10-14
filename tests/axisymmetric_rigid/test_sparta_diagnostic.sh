@@ -26,6 +26,13 @@ import math
 import re
 import sys
 log=open(sys.argv[1],encoding='utf-8',errors='replace').read()
+prescribed=re.findall(r'GRAIN_PRESCRIBED_TEST step=(\d+) reaction_Jx=([^\\s]+)',log)
+if not prescribed or int(prescribed[-1][0])!=100:
+    raise SystemExit('Missing prescribed real-particle axial write test')
+reaction=float(prescribed[-1][1])
+if not math.isfinite(reaction) or reaction>=0.:
+    raise SystemExit(f'Invalid sign or magnitude of prescribed grain reaction: {reaction}')
+
 matches=re.findall(r'GRAIN_DIAGNOSTIC step=(\d+) molecules=([^ ]+) gas_px=([^ ]+) translational_E=([^\s]+)',log)
 if not matches:
     raise SystemExit('No correctly formatted diagnostic line')
