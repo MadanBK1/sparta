@@ -8,6 +8,7 @@ on:
       - 'src/grain_maxwellian_reference.h'
       - 'src/grain_poisson_reference.h'
       - 'src/grain_axial_elastic_event.h'
+      - 'src/grain_exposure_reference.h'
       - 'src/KOKKOS/kokkos_*grain*.h'
       - 'tests/axisymmetric_rigid/**'
       - '.github/workflows/axisymmetric-grain-tests.yml'
