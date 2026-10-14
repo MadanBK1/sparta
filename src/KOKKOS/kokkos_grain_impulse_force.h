@@ -5,12 +5,18 @@
 #ifndef SPARTA_KOKKOS_GRAIN_IMPULSE_FORCE_H
 #define SPARTA_KOKKOS_GRAIN_IMPULSE_FORCE_H
 #include <Kokkos_Core.hpp>
+#include <cmath>
+#include <stdexcept>
 namespace SPARTA_NS {
 namespace AxisymmetricGrains {
 template<class ExecSpace,class ImpulseView,class ForceView>
 void add_impulse_forces(const ImpulseView& impulse, const ForceView& force,
                         int n, double dt) {
-  const double inverse_dt=1.0/dt; // caller validates finite dt>0
+  if (!(dt>0.0) || !std::isfinite(dt) || n<0 ||
+      static_cast<size_t>(n)>impulse.extent(0) ||
+      static_cast<size_t>(n)>force.extent(0))
+    throw std::invalid_argument("invalid impulse-to-force dimensions or timestep");
+  const double inverse_dt=1.0/dt;
   Kokkos::parallel_for("grain_impulse_to_force",
     Kokkos::RangePolicy<ExecSpace>(0,n),KOKKOS_LAMBDA(const int i) {
       // One thread per grain; avoids atomics on the final force field.
