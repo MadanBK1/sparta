@@ -715,7 +715,7 @@ void UpdateKokkos::run(int nsteps)
         Kokkos::HostSpace(),contact_grains.velocity);
       if (comm->me==0 && screen)
         fprintf(screen,
-          "GRAIN_OVERLAP_TEST step=%lld force0=%.17g force1=%.17g v0=%.17g v1=%.17g\\n",
+          "GRAIN_OVERLAP_TEST step=%lld force0=%.17g force1=%.17g v0=%.17g v1=%.17g\n",
           (long long)ntimestep,forces_host(0,0),forces_host(1,0),
           velocities_host(0,0),velocities_host(1,0));
     }
