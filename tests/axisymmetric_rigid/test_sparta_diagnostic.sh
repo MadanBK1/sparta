@@ -26,12 +26,21 @@ import math
 import re
 import sys
 log=open(sys.argv[1],encoding='utf-8',errors='replace').read()
-prescribed=re.findall(r'GRAIN_PRESCRIBED_TEST step=(\d+) reaction_Jx=([^\s]+)',log)
+prescribed=re.findall(r'GRAIN_PRESCRIBED_TEST step=(\d+) reaction_Jx=([^\s]+) grain_vx=([^\s]+) budget_residual=([^\s]+)',log)
 if not prescribed or int(prescribed[-1][0])!=100:
     raise SystemExit('Missing prescribed real-particle axial write test')
 reaction=float(prescribed[-1][1])
 if not math.isfinite(reaction) or reaction>=0.:
     raise SystemExit(f'Invalid sign or magnitude of prescribed grain reaction: {reaction}')
+velocity=float(prescribed[-1][2])
+residual=float(prescribed[-1][3])
+if not math.isfinite(velocity) or not math.isfinite(residual):
+    raise SystemExit('Nonfinite prescribed grain velocity or momentum budget')
+if abs(1.e-6*velocity-reaction)>1.e-10*abs(reaction):
+    raise SystemExit('Prescribed gas-grain momentum exchange failed')
+if abs(residual)>1.e-10*abs(reaction):
+    raise SystemExit('Prescribed gas-grain reported budget nonzero')
+
 
 matches=re.findall(r'GRAIN_DIAGNOSTIC step=(\d+) molecules=([^ ]+) gas_px=([^ ]+) translational_E=([^\s]+)',log)
 if not matches:
