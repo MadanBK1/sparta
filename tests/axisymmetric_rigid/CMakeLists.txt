@@ -7,6 +7,7 @@ foreach(t IN ITEMS
   test_kokkos_grain_annular_encounter
   test_kokkos_grain_poisson_counts
   test_kokkos_grain_weighted_split
+  test_kokkos_grain_split_plan
   test_kokkos_grain_contact
   test_kokkos_grain_wall_contact
   test_kokkos_grain_impulse_events
