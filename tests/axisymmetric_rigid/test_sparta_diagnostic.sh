@@ -9,7 +9,7 @@ if [[ -z "$binary" ]]; then
   exit 1
 fi
 tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
+trap 'status=$?; if (( status != 0 )); then echo "=== SPARTA diagnostic output (last 120 lines) ===" >&2; tail -n 120 "$tmp/run.log" >&2 || true; fi; rm -rf "$tmp"' EXIT
 cp "$root/examples/axi/"{in.axi,air.species,air.vss,data.circle} "$tmp/"
 # A short smoke test; 101 steps checks that the device grain state survives the collision timestep.
 sed -i 's/^run[[:space:]]*1000/run 101/' "$tmp/in.axi"
@@ -61,6 +61,12 @@ if not all(math.isfinite(x) for x in (force0,force1,v0,v1)):
     raise SystemExit('Nonfinite grain contact force or velocity')
 if not force0<0.0 or not force1>0.0:
     raise SystemExit('Expected strictly nonzero, repulsive contact forces')
+# For R=75 um, center spacing=100 um and kn=1000 N/m,
+# the exact initial pair force is 1000*(150-100) um = 0.05 N.
+if not math.isclose(force0,-0.05,rel_tol=1.e-10,abs_tol=1.e-12):
+    raise SystemExit(f'Incorrect contact stiffness or overlap: force0={force0}')
+if not math.isclose(force1,0.05,rel_tol=1.e-10,abs_tol=1.e-12):
+    raise SystemExit(f'Incorrect contact stiffness or overlap: force1={force1}')
 if not math.isclose(force0+force1,0.0,abs_tol=1.e-12):
     raise SystemExit('Pairwise contact forces fail Newton third law')
 if not v0<0.0 or not v1>0.0:
