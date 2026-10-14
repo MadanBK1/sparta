@@ -576,6 +576,41 @@ void UpdateKokkos::run(int nsteps)
 
 
 
+#ifdef SPARTA_GRAIN_PRESCRIBED_AXIAL_TEST
+    // DEVELOPMENT TEST ONLY: zero-net-momentum transfer applied to the
+    // first locally owned gas representative at step 100. The impulse is
+    // accumulated in an ephemeral scalar, NOT in a moving grain. This
+    // checks real OnePart velocity writes and SPARTA device ownership.
+    // It is NOT a collision law, not a global grain coupling, and must
+    // never be enabled for scientific runs.
+    if (domain->axisymmetric && ntimestep == 100 && particle->nlocal > 0) {
+      particle_kk->sync(Device,PARTICLE_MASK|SPECIES_MASK);
+      auto test_particles = particle_kk->k_particles.view_device();
+      auto test_species = particle_kk->k_species.view_device();
+      const double test_fnum = fnum;
+      const int test_cellweighted = cellweightflag;
+      double local_reaction = 0.0;
+      // Deliberately modify only one representative owned by this rank.
+      Kokkos::parallel_reduce("grain_prescribed_axial_exchange",
+        Kokkos::RangePolicy<DeviceType>(0,1),
+        KOKKOS_LAMBDA(const int k,double& impulse) {
+          const double oldv=test_particles(k).v[0];
+          const double mass=test_fnum*test_species(test_particles(k).ispecies).mass*
+            (test_cellweighted ? test_particles(k).weight : 1.0);
+          const double delta_v=1.e-3; // m/s; numerical diagnostic only
+          test_particles(k).v[0]=oldv+delta_v;
+          impulse=-mass*delta_v;
+        },local_reaction);
+      particle_kk->modify(Device,PARTICLE_MASK);
+      double global_reaction=0.0;
+      MPI_Allreduce(&local_reaction,&global_reaction,1,
+                    MPI_DOUBLE,MPI_SUM,world);
+      if (comm->me == 0 && screen)
+        fprintf(screen,"GRAIN_PRESCRIBED_TEST step=%lld reaction_Jx=%.17g\\n",
+                (long long)ntimestep,global_reaction);
+    }
+#endif
+
 #ifdef SPARTA_GRAIN_READONLY_DIAGNOSTIC
     // Opt-in diagnostic ONLY, with no particle or grain state modifications.
     // Prints globally reduced axial gas momentum every 100 timesteps.
