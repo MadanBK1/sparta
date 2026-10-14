@@ -22,11 +22,12 @@ int main(int argc,char**argv) {
     Kokkos::deep_copy(e.delta_gas_p,dp);
     Kokkos::deep_copy(e.physical_weight,w);
     SPARTA_NS::AxisymmetricGrains::accumulate_grain_impulses(e,impulse);
-    Kokkos::deep_copy(dp,impulse);
-    if(std::abs(dp(0,0)+8.)>1e-12 ||
-       std::abs(dp(0,1)-1.)>1e-12 ||
-       std::abs(dp(1,0)-8.)>1e-12 ||
-       std::abs(dp(1,1)+4.)>1e-12) status=1;
+    auto result=Kokkos::create_mirror_view(impulse);
+    Kokkos::deep_copy(result,impulse);
+    if(std::abs(result(0,0)+8.)>1e-12 ||
+       std::abs(result(0,1)-1.)>1e-12 ||
+       std::abs(result(1,0)-8.)>1e-12 ||
+       std::abs(result(1,1)+4.)>1e-12) status=1;
   }
   Kokkos::finalize();
   if(status) {std::cerr<<"FAIL impulse accumulation\n";return 1;}
