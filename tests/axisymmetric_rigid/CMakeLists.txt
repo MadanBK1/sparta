@@ -4,6 +4,7 @@ find_package(Kokkos CONFIG REQUIRED)
 enable_testing()
 foreach(t IN ITEMS
   test_kokkos_grain_integration
+  test_kokkos_grain_annular_encounter
   test_kokkos_grain_contact
   test_kokkos_grain_wall_contact
   test_kokkos_grain_impulse_events
