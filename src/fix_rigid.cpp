@@ -2076,8 +2076,18 @@ void FixRigid::body_properties(double density)
   if (domain->axisymmetric) {
     std::vector<AxisymmetricBodyGeometry::Point> polygon;
     polygon.reserve(nsurf);
-    for (int i=0; i<nsurf; ++i)
+    // Do not assume that gathered surface lines are in polygon order.
+    // Until an edge-connectivity reconstruction is implemented, require a
+    // contiguous ordered cycle and fail fast rather than integrating a
+    // self-crossing sequence of unordered surface points.
+    for (int i=0; i<nsurf; ++i) {
+      const int next=(i+1)%nsurf;
+      const double *end=bodypt[i][1];
+      const double *nextstart=bodypt[next][0];
+      if (end[0] != nextstart[0] || end[1] != nextstart[1])
+        error->all(FLERR,"Fix rigid axisymmetric profile segments must be an ordered contiguous cycle");
       polygon.push_back({bodypt[i][0][0],bodypt[i][0][1]});
+    }
 
     // Preserve SPARTA's fatal-error convention instead of propagating
     // exceptions through MPI initialization.
