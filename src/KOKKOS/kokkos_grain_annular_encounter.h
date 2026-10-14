@@ -21,7 +21,8 @@ void expected_counts(const SpeedView& speed, const WeightView& physical_weight,
     KOKKOS_LAMBDA(const int i) {
       const double tau=coefficient*speed(i);
       // Kokkos::exp handles portable device math; tau >= 0 is required.
-      const double probability=-Kokkos::expm1(-tau);
+      const double probability=(tau<1.e-5) ?
+        tau*(1.0-tau*(0.5-tau/6.0)) : (1.0-Kokkos::exp(-tau));
       expected(i)=physical_weight(i)*probability;
     });
 }
