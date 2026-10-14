@@ -563,6 +563,19 @@ void UpdateKokkos::run(int nsteps)
 
     if (collide_react) collide_react_update();
 
+    // FUTURE AXISYMMETRIC GRAIN COUPLING POINT (intentionally disabled):
+    // A reduced-order grain collision operator could run here after
+    // move/migrate/post_weight/sort/DSMC collisions and before end-of-step
+    // diagnostic fixes. It must preserve Kokkos ParticleKokkos::k_particles
+    // device ownership and mark PARTICLE_MASK modified on the device.
+    // DO NOT call the standalone mean-field impulse prototype here:
+    // its off-axis sphere collision statistics and energy closure are not
+    // validated; the actual operator must also settle grain integration,
+    // MPI grain ownership/reductions and axisymmetric weight semantics.
+    // See GRAIN_KOKKOS_INTEGRATION_GATE.md for prerequisites.
+
+
+
     // diagnostic fixes
 
     if (n_end_of_step) {
