@@ -632,6 +632,14 @@ void UpdateKokkos::run(int nsteps)
                 "GRAIN_PRESCRIBED_TEST step=%lld reaction_Jx=%.17g grain_vx=%.17g budget_residual=%.17g\n",
                 (long long)ntimestep,global_reaction,grain_velocity,budget_residual);
     }
+    // Persistence check: the device grain state survives to the next step.
+    if (domain->axisymmetric && ntimestep == 101) {
+      auto grain_after_step = Kokkos::create_mirror_view_and_copy(
+        Kokkos::HostSpace(),test_grain_vx);
+      if (comm->me == 0 && screen)
+        fprintf(screen,"GRAIN_PERSISTENCE_TEST step=%lld grain_vx=%.17g\n",
+                (long long)ntimestep,grain_after_step(0));
+    }
 #endif
 
 #ifdef SPARTA_GRAIN_READONLY_DIAGNOSTIC
