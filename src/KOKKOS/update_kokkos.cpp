@@ -723,6 +723,37 @@ void UpdateKokkos::run(int nsteps)
           (long long)ntimestep,initial_force0,initial_force1,
           velocities_host(0,0),velocities_host(1,0));
     }
+    // Independent wall-contact regression (stationary plane x=0).
+    // Allowed center x >= radius. The external wall reaction is reported
+    // explicitly, not fed into the gas or any moving boundary.
+    if (domain->axisymmetric && ntimestep == 101) {
+      AxisymmetricGrains::State<DeviceType> wall_grains(1);
+      Kokkos::deep_copy(wall_grains.position,0.0);
+      Kokkos::deep_copy(wall_grains.velocity,0.0);
+      Kokkos::deep_copy(wall_grains.mass,1.e-6);
+      Kokkos::deep_copy(wall_grains.radius,75.e-6);
+      auto wx=wall_grains.position;
+      Kokkos::parallel_for("grain_wall_init",
+        Kokkos::RangePolicy<DeviceType>(0,1),
+        KOKKOS_LAMBDA(const int k) { wx(k,0)=50.e-6; });
+      AxisymmetricGrains::zero_forces(wall_grains);
+      AxisymmetricGrains::linear_plane_contacts(
+        wall_grains,1.0,0.0,0.0,1.e3,0.0);
+      auto wf=Kokkos::create_mirror_view_and_copy(
+        Kokkos::HostSpace(),wall_grains.force);
+      const double initial_wall_force=wf(0,0);
+      AxisymmetricGrains::kick_drift(wall_grains,update->dt);
+      AxisymmetricGrains::zero_forces(wall_grains);
+      AxisymmetricGrains::linear_plane_contacts(
+        wall_grains,1.0,0.0,0.0,1.e3,0.0);
+      AxisymmetricGrains::finish_kick(wall_grains,update->dt);
+      auto wv=Kokkos::create_mirror_view_and_copy(
+        Kokkos::HostSpace(),wall_grains.velocity);
+      if (comm->me==0 && screen)
+        fprintf(screen,
+          "GRAIN_WALL_TEST step=%lld normal_force=%.17g wall_reaction=%.17g vx=%.17g\n",
+          (long long)ntimestep,initial_wall_force,-initial_wall_force,wv(0,0));
+    }
 #endif
 
 #ifdef SPARTA_GRAIN_READONLY_DIAGNOSTIC
