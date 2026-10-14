@@ -705,6 +705,10 @@ void UpdateKokkos::run(int nsteps)
         contact_grains,contact_pairs,1.e3,0.0);
       auto forces_host=Kokkos::create_mirror_view_and_copy(
         Kokkos::HostSpace(),contact_grains.force);
+      // Save numerical values NOW: for Kokkos Serial, a host mirror may
+      // alias the original View and change during the later force refresh.
+      const double initial_force0=forces_host(0,0);
+      const double initial_force1=forces_host(1,0);
       // Velocity-Verlet requires force refresh after changing positions.
       AxisymmetricGrains::kick_drift(contact_grains,update->dt);
       AxisymmetricGrains::zero_forces(contact_grains);
@@ -716,7 +720,7 @@ void UpdateKokkos::run(int nsteps)
       if (comm->me==0 && screen)
         fprintf(screen,
           "GRAIN_OVERLAP_TEST step=%lld force0=%.17g force1=%.17g v0=%.17g v1=%.17g\n",
-          (long long)ntimestep,forces_host(0,0),forces_host(1,0),
+          (long long)ntimestep,initial_force0,initial_force1,
           velocities_host(0,0),velocities_host(1,0));
     }
 #endif
