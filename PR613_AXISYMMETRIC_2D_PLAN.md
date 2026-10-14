@@ -56,3 +56,34 @@ include its diagnostic/prototype work.
 
 This branch documents the existing implementation and preserves all
 runtime safety guards. No unverified physical solver is enabled.
+
+
+## Concrete CPU mover incompatibility (source inspection)
+
+The existing `Update::move<DIM,SURF,OPT,RIGID>()` rigid
+moving-surface intersection only applies to `DIM == 2` and `DIM == 3`.
+For `DIM == 2`, the code calls
+`Geometry::line_line_moving_intersect(...,fr->xcm,fr->vcm,fr->omega,...)`.
+For `DIM == 1` (axisymmetric), it instead calls
+`Geometry::axi_line_intersect(...)` on a **static** line, without
+passing any `FixRigid` position, velocity, angular velocity, or
+surface-frame transform. Merely dispatching `move<1,1,0,1>` would
+continue testing static geometry during a rigid-body move. In addition,
+the `DIM == 1` path obtains a transformed collision-point velocity
+(`vc`) from the axisymmetric intersection function. That result must
+not be confused with the wall velocity returned by the moving rigid
+collision routine.
+
+**Specific next implementation task:** devise an axisymmetric
+moving-line intersection that consistently combines the axisymmetric
+trajectory, time-dependent rigid surface geometry, collision normal,
+and wall velocity. Reuse the existing gas-surface scattering law and
+force reaction after a valid moving-surface hit is found. Test with
+constant rigid velocity and zero rotation *before* enabling feedback
+from collision forces. No axisymmetric rigid-body safety guard may be
+removed until this collision path is implemented and tested.
+
+For an off-axis circle, this remains a reduced 2D closure: the
+geometrical intersection of 2D particle tracks and moving circles is
+not by itself equivalent to the physical collision statistics of a
+3D axisymmetric gas interacting with isolated off-axis spheres.
