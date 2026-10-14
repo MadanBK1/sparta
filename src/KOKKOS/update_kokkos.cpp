@@ -684,6 +684,41 @@ void UpdateKokkos::run(int nsteps)
         fprintf(screen,"GRAIN_SECOND_GRAIN_TEST step=%lld grain_vx=%.17g grain_x=%.17g\n",
                 (long long)ntimestep,grain_after_step(1,0),grain_x_after_step(1,0));
     }
+    // Independent finite-overlap contact test: avoids perturbing the
+    // prescribed gas-to-grain momentum budget or the stationary second grain.
+    if (domain->axisymmetric && ntimestep == 101) {
+      AxisymmetricGrains::State<DeviceType> contact_grains(2);
+      Kokkos::deep_copy(contact_grains.position,0.0);
+      Kokkos::deep_copy(contact_grains.velocity,0.0);
+      Kokkos::deep_copy(contact_grains.mass,1.e-6);
+      Kokkos::deep_copy(contact_grains.radius,75.e-6);
+      auto contact_x=contact_grains.position;
+      Kokkos::parallel_for("grain_contact_init",
+        Kokkos::RangePolicy<DeviceType>(0,1),
+        KOKKOS_LAMBDA(const int) { contact_x(1,0)=1.e-4; });
+      Kokkos::View<int*[2],DeviceType> contact_pairs("grain_overlap_pairs",1);
+      auto pairs_host=Kokkos::create_mirror_view(contact_pairs);
+      pairs_host(0,0)=0; pairs_host(0,1)=1;
+      Kokkos::deep_copy(contact_pairs,pairs_host);
+      AxisymmetricGrains::zero_forces(contact_grains);
+      AxisymmetricGrains::linear_normal_contacts(
+        contact_grains,contact_pairs,1.e3,0.0);
+      auto forces_host=Kokkos::create_mirror_view_and_copy(
+        Kokkos::HostSpace(),contact_grains.force);
+      // Velocity-Verlet requires force refresh after changing positions.
+      AxisymmetricGrains::kick_drift(contact_grains,update->dt);
+      AxisymmetricGrains::zero_forces(contact_grains);
+      AxisymmetricGrains::linear_normal_contacts(
+        contact_grains,contact_pairs,1.e3,0.0);
+      AxisymmetricGrains::finish_kick(contact_grains,update->dt);
+      auto velocities_host=Kokkos::create_mirror_view_and_copy(
+        Kokkos::HostSpace(),contact_grains.velocity);
+      if (comm->me==0 && screen)
+        fprintf(screen,
+          "GRAIN_OVERLAP_TEST step=%lld force0=%.17g force1=%.17g v0=%.17g v1=%.17g\\n",
+          (long long)ntimestep,forces_host(0,0),forces_host(1,0),
+          velocities_host(0,0),velocities_host(1,0));
+    }
 #endif
 
 #ifdef SPARTA_GRAIN_READONLY_DIAGNOSTIC
