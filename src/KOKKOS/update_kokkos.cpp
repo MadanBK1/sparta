@@ -654,13 +654,13 @@ void UpdateKokkos::run(int nsteps)
     // The diagnostic grain is not used to alter DSMC collision geometry.
     if (domain->axisymmetric && ntimestep == 101) {
       const double test_dt=update->dt;
+      // Exercise the existing velocity-Verlet kernel with zero forces:
+      // kick_drift must reduce to free flight for both grains.
+      AxisymmetricGrains::zero_forces(test_grains);
+      AxisymmetricGrains::kick_drift(test_grains,test_dt);
+      AxisymmetricGrains::finish_kick(test_grains,test_dt);
       auto test_grain_x=test_grains.position;
       auto test_grain_vx=test_grains.velocity;
-      Kokkos::parallel_for("grain_test_drift",
-        Kokkos::RangePolicy<DeviceType>(0,2),
-        KOKKOS_LAMBDA(const int k) {
-          test_grain_x(k,0) += test_grain_vx(k,0)*test_dt;
-        });
       auto grain_after_step=Kokkos::create_mirror_view_and_copy(
         Kokkos::HostSpace(),test_grain_vx);
       auto grain_x_after_step=Kokkos::create_mirror_view_and_copy(
