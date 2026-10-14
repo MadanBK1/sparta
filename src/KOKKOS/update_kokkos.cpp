@@ -597,12 +597,37 @@ void UpdateKokkos::run(int nsteps)
           subtotal += grain_audit_fnum *
                       grain_audit_species(p.ispecies).mass * w * p.v[0];
         },grain_audit_local);
+      // Read-only diagnostics for physical particle count and gas kinetic energy.
+      double grain_audit_local_count = 0.0;
+      Kokkos::parallel_reduce("grain_readonly_molecule_count",
+        Kokkos::RangePolicy<DeviceType>(0,particle->nlocal),
+        KOKKOS_LAMBDA(const int j,double& subtotal) {
+          const auto p = grain_audit_particles(j);
+          subtotal += grain_audit_fnum*(grain_audit_weighted ? p.weight : 1.0);
+        },grain_audit_local_count);
+      double grain_audit_local_energy = 0.0;
+      Kokkos::parallel_reduce("grain_readonly_translational_energy",
+        Kokkos::RangePolicy<DeviceType>(0,particle->nlocal),
+        KOKKOS_LAMBDA(const int j,double& subtotal) {
+          const auto p = grain_audit_particles(j);
+          const double w = grain_audit_weighted ? p.weight : 1.0;
+          const double v2 = p.v[0]*p.v[0]+p.v[1]*p.v[1]+p.v[2]*p.v[2];
+          subtotal += 0.5*grain_audit_fnum*
+                      grain_audit_species(p.ispecies).mass*w*v2;
+        },grain_audit_local_energy);
       double grain_audit_global = 0.0;
       MPI_Allreduce(&grain_audit_local,&grain_audit_global,1,
                     MPI_DOUBLE,MPI_SUM,world);
+      double grain_audit_count = 0.0, grain_audit_energy = 0.0;
+      MPI_Allreduce(&grain_audit_local_count,&grain_audit_count,1,
+                    MPI_DOUBLE,MPI_SUM,world);
+      MPI_Allreduce(&grain_audit_local_energy,&grain_audit_energy,1,
+                    MPI_DOUBLE,MPI_SUM,world);
       if (comm->me == 0 && screen)
-        fprintf(screen,"GRAIN_DIAGNOSTIC step=%lld gas_px=%.17g\n",
-                (long long) ntimestep,grain_audit_global);
+        fprintf(screen,
+                "GRAIN_DIAGNOSTIC step=%lld molecules=%.17g gas_px=%.17g translational_E=%.17g\\n",
+                (long long) ntimestep,grain_audit_count,
+                grain_audit_global,grain_audit_energy);
     }
 #endif
 
