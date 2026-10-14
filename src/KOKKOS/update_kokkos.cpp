@@ -662,7 +662,7 @@ void UpdateKokkos::run(int nsteps)
           "GRAIN_PERSISTENCE_TEST step=%lld grain_vx=%.17g grain_x=%.17g\n",
           (long long)ntimestep,grain_after_step(0),grain_x_after_step(0));
       if (comm->me==0 && screen)
-        fprintf(screen,"GRAIN_SECOND_GRAIN_TEST step=%lld grain_vx=%.17g grain_x=%.17g\\n",
+        fprintf(screen,"GRAIN_SECOND_GRAIN_TEST step=%lld grain_vx=%.17g grain_x=%.17g\n",
                 (long long)ntimestep,grain_after_step(1),grain_x_after_step(1));
     }
 #endif
