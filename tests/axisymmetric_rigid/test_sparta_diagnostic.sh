@@ -79,6 +79,19 @@ if not math.isclose(v0+v1,0.0,abs_tol=1.e-12):
 
 
 
+wall=re.findall(r'GRAIN_WALL_TEST step=(\d+) normal_force=([^\s]+) wall_reaction=([^\s]+) vx=([^\s]+)',log)
+if not wall or int(wall[-1][0])!=101:
+    raise SystemExit('Missing real-SPARTA grain-wall contact test')
+fn,jwall,vwall=map(float,wall[-1][1:])
+if not all(map(math.isfinite,(fn,jwall,vwall))):
+    raise SystemExit('Nonfinite wall contact diagnostics')
+if not math.isclose(fn,0.025,rel_tol=1.e-10,abs_tol=1.e-12):
+    raise SystemExit(f'Incorrect initial wall spring force: {fn}')
+if not math.isclose(jwall,-fn,rel_tol=1.e-12,abs_tol=1.e-12):
+    raise SystemExit('Wall reaction does not balance grain force')
+if vwall<=0.:
+    raise SystemExit('Overlapping grain failed to accelerate away from wall')
+
 matches=re.findall(r'GRAIN_DIAGNOSTIC step=(\d+) molecules=([^ ]+) gas_px=([^ ]+) translational_E=([^\s]+)',log)
 if not matches:
     raise SystemExit('No correctly formatted diagnostic line')
