@@ -54,3 +54,26 @@ jobs:
 # CPU Kokkos compilation is only a portability smoke test.
 # No NVIDIA CUDA, AMD HIP, Intel SYCL, full SPARTA coupling,
 # or numerical gas-grain physics is validated in this workflow.
+
+  sparta-kokkos-diagnostic-build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MPI dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openmpi-bin libopenmpi-dev
+      - name: Configure full SPARTA with read-only diagnostic
+        run: |
+          cmake -S cmake -B /tmp/sparta-grain-audit-build \
+            -C cmake/presets/kokkos_mpi_only.cmake \
+            -DCMAKE_CXX_FLAGS=-DSPARTA_GRAIN_READONLY_DIAGNOSTIC \
+            -DKokkos_ENABLE_SERIAL=ON \
+            -DKokkos_ENABLE_OPENMP=OFF \
+            -DSPARTA_ENABLE_TESTING=OFF
+      - name: Compile actual SPARTA Kokkos source
+        run: cmake --build /tmp/sparta-grain-audit-build --parallel 2
+      - name: Confirm SPARTA executable exists
+        run: |
+          find /tmp/sparta-grain-audit-build -type f \
+            \( -name 'spa_*' -o -name 'sparta' \) -executable -print
