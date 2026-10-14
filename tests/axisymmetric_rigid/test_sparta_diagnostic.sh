@@ -48,6 +48,12 @@ if not math.isclose(float(persistence[-1][1]),velocity,rel_tol=1.e-12,abs_tol=0.
 position=float(persistence[-1][2])
 if not math.isfinite(position) or not math.isclose(position,velocity*1.e-6,rel_tol=1.e-10,abs_tol=1.e-25):
     raise SystemExit(f'Grain free-flight displacement incorrect: {position}')
+second=re.findall(r'GRAIN_SECOND_GRAIN_TEST step=(\d+) grain_vx=([^\s]+) grain_x=([^\s]+)',log)
+if not second or int(second[-1][0])!=101:
+    raise SystemExit('Missing independent second-grain diagnostic')
+if float(second[-1][1])!=0. or float(second[-1][2])!=0.:
+    raise SystemExit('Unforced second grain unexpectedly moved')
+
 
 
 
