@@ -53,6 +53,21 @@ if not second or int(second[-1][0])!=101:
     raise SystemExit('Missing independent second-grain diagnostic')
 if float(second[-1][1])!=0. or float(second[-1][2])!=0.:
     raise SystemExit('Unforced second grain unexpectedly moved')
+overlap=re.findall(r'GRAIN_OVERLAP_TEST step=(\d+) force0=([^\s]+) force1=([^\s]+) v0=([^\s]+) v1=([^\s]+)',log)
+if not overlap or int(overlap[-1][0])!=101:
+    raise SystemExit('Missing finite-overlap grain contact diagnostic')
+force0,force1,v0,v1=map(float,overlap[-1][1:])
+if not all(math.isfinite(x) for x in (force0,force1,v0,v1)):
+    raise SystemExit('Nonfinite grain contact force or velocity')
+if not force0<0.0 or not force1>0.0:
+    raise SystemExit('Expected strictly nonzero, repulsive contact forces')
+if not math.isclose(force0+force1,0.0,abs_tol=1.e-12):
+    raise SystemExit('Pairwise contact forces fail Newton third law')
+if not v0<0.0 or not v1>0.0:
+    raise SystemExit('Repulsive contact did not separate grains')
+if not math.isclose(v0+v1,0.0,abs_tol=1.e-12):
+    raise SystemExit('Pair contact introduced net axial momentum')
+
 
 
 
