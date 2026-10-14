@@ -27,7 +27,16 @@ int main(int argc,char**argv) {
  Kokkos::deep_copy(particles,h);Kokkos::deep_copy(species,s);
  Kokkos::deep_copy(prob,p);Kokkos::deep_copy(after,v);
  Kokkos::deep_copy(target,t);Kokkos::deep_copy(impulse,0.);
- SPARTA_NS::AxisymmetricGrains::onepart_axial_partial_exchange<Ex>(
+ // A corrupt probability must be rejected before modifying gas state.
+ p(0)=1.25;Kokkos::deep_copy(prob,p);
+ bool rejected=false;
+ try {
+   SPARTA_NS::AxisymmetricGrains::checked_onepart_axial_partial_exchange<Ex>(
+     particles,species,prob,target,after,impulse,2,5.,true);
+ } catch(const std::invalid_argument&) { rejected=true; }
+ if(!rejected) fail=1;
+ p(0)=0.25;Kokkos::deep_copy(prob,p);
+ SPARTA_NS::AxisymmetricGrains::checked_onepart_axial_partial_exchange<Ex>(
    particles,species,prob,target,after,impulse,2,5.,true);
  Kokkos::deep_copy(h,particles);
  auto j=Kokkos::create_mirror_view(impulse);
