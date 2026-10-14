@@ -11,8 +11,8 @@ fi
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 cp "$root/examples/axi/"{in.axi,air.species,air.vss,data.circle} "$tmp/"
-# A short smoke test; 100 steps is required to reach the diagnostic interval.
-sed -i 's/^run[[:space:]]*1000/run 100/' "$tmp/in.axi"
+# A short smoke test; 101 steps checks that the device grain state survives the collision timestep.
+sed -i 's/^run[[:space:]]*1000/run 101/' "$tmp/in.axi"
 (cd "$tmp" && "$binary" -k on -sf kk -in in.axi > run.log 2>&1) || {
   cat "$tmp/run.log" >&2
   exit 1
@@ -40,6 +40,12 @@ if abs(1.e-6*velocity-reaction)>1.e-10*abs(reaction):
     raise SystemExit('Prescribed gas-grain momentum exchange failed')
 if abs(residual)>1.e-10*abs(reaction):
     raise SystemExit('Prescribed gas-grain reported budget nonzero')
+persistence=re.findall(r'GRAIN_PERSISTENCE_TEST step=(\d+) grain_vx=([^\s]+)',log)
+if not persistence or int(persistence[-1][0])!=101:
+    raise SystemExit('Missing next-step device grain persistence check')
+if not math.isclose(float(persistence[-1][1]),velocity,rel_tol=1.e-12,abs_tol=0.):
+    raise SystemExit('Kokkos grain state did not persist to the next timestep')
+
 
 
 matches=re.findall(r'GRAIN_DIAGNOSTIC step=(\d+) molecules=([^ ]+) gas_px=([^ ]+) translational_E=([^\s]+)',log)
