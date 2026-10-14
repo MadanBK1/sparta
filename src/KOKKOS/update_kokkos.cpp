@@ -44,6 +44,9 @@
 #include "surf_collide_specular_kokkos.h"
 #include "fix_rigid.h"
 #include "kokkos_base.h"
+#ifdef SPARTA_GRAIN_PRESCRIBED_AXIAL_TEST
+#include "kokkos_axisymmetric_grains.h"
+#endif
 
 using namespace SPARTA_NS;
 
@@ -503,15 +506,17 @@ void UpdateKokkos::run(int nsteps)
 #ifdef SPARTA_GRAIN_PRESCRIBED_AXIAL_TEST
   // Development-only axial position, velocity, impulse and mass.
   // Not connected to a surface geometry, contact model or real grain.
-  // Two independent test grains, with the prescribed impulse delivered to
-  // grain zero; grain one remains stationary. All arrays stay on device.
-  Kokkos::View<double*,DeviceType> test_grain_vx("grain_test_vx",2);
-  Kokkos::View<double*,DeviceType> test_grain_x("grain_test_x",2);
+  // Reuse the existing extensible Kokkos grain state for the smoke test.
+  // Two independent entries; not yet a production grain subsystem.
+  AxisymmetricGrains::State<DeviceType> test_grains(2);
+  Kokkos::deep_copy(test_grains.position,0.0);
+  Kokkos::deep_copy(test_grains.velocity,0.0);
+  Kokkos::deep_copy(test_grains.force,0.0);
+  Kokkos::deep_copy(test_grains.mass,1.e-6);
+  Kokkos::deep_copy(test_grains.radius,75.e-6);
   Kokkos::View<double*,DeviceType> test_grain_impulse("grain_test_impulse",2);
-  Kokkos::deep_copy(test_grain_vx,0.0);
-  Kokkos::deep_copy(test_grain_x,0.0);
   Kokkos::deep_copy(test_grain_impulse,0.0);
-  const double test_grain_mass = 1.e-6; // kg
+  const double test_grain_mass=1.e-6;
 #endif
 
   // loop over timesteps
@@ -629,14 +634,15 @@ void UpdateKokkos::run(int nsteps)
       Kokkos::parallel_for("grain_test_set_impulse",
         Kokkos::RangePolicy<DeviceType>(0,1),
         KOKKOS_LAMBDA(const int k) { test_grain_impulse(k)=grain_test_reaction; });
+      auto test_grain_vx=test_grains.velocity;
       Kokkos::parallel_for("grain_prescribed_recoil",
         Kokkos::RangePolicy<DeviceType>(0,1),
         KOKKOS_LAMBDA(const int k) {
-          test_grain_vx(k) += test_grain_impulse(k)/test_grain_mass;
+          test_grain_vx(k,0) += test_grain_impulse(k)/test_grain_mass;
         });
       auto test_grain_host =
         Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),test_grain_vx);
-      const double grain_velocity = test_grain_host(0);
+      const double grain_velocity = test_grain_host(0,0);
       const double budget_residual =
         test_grain_mass*grain_velocity-global_reaction;
       if (comm->me == 0 && screen)
@@ -648,10 +654,12 @@ void UpdateKokkos::run(int nsteps)
     // The diagnostic grain is not used to alter DSMC collision geometry.
     if (domain->axisymmetric && ntimestep == 101) {
       const double test_dt=update->dt;
+      auto test_grain_x=test_grains.position;
+      auto test_grain_vx=test_grains.velocity;
       Kokkos::parallel_for("grain_test_drift",
         Kokkos::RangePolicy<DeviceType>(0,2),
         KOKKOS_LAMBDA(const int k) {
-          test_grain_x(k) += test_grain_vx(k)*test_dt;
+          test_grain_x(k,0) += test_grain_vx(k,0)*test_dt;
         });
       auto grain_after_step=Kokkos::create_mirror_view_and_copy(
         Kokkos::HostSpace(),test_grain_vx);
@@ -660,10 +668,10 @@ void UpdateKokkos::run(int nsteps)
       if(comm->me==0 && screen)
         fprintf(screen,
           "GRAIN_PERSISTENCE_TEST step=%lld grain_vx=%.17g grain_x=%.17g\n",
-          (long long)ntimestep,grain_after_step(0),grain_x_after_step(0));
+          (long long)ntimestep,grain_after_step(0,0),grain_x_after_step(0,0));
       if (comm->me==0 && screen)
         fprintf(screen,"GRAIN_SECOND_GRAIN_TEST step=%lld grain_vx=%.17g grain_x=%.17g\n",
-                (long long)ntimestep,grain_after_step(1),grain_x_after_step(1));
+                (long long)ntimestep,grain_after_step(1,0),grain_x_after_step(1,0));
     }
 #endif
 
