@@ -657,6 +657,17 @@ void UpdateKokkos::run(int nsteps)
       // Exercise the existing velocity-Verlet kernel with zero forces:
       // kick_drift must reduce to free flight for both grains.
       AxisymmetricGrains::zero_forces(test_grains);
+      // Development-only grain contact smoke test: no overlap in this
+      // two-grain case (both grains begin at the same position, and the
+      // contact kernel explicitly skips coincident centers). To test
+      // finite-separation contact, use the dedicated Kokkos contact tests.
+      Kokkos::View<int*[2],DeviceType> test_contact_pairs("grain_contact_pairs",1);
+      auto test_pair_host=Kokkos::create_mirror_view(test_contact_pairs);
+      test_pair_host(0,0)=0;
+      test_pair_host(0,1)=1;
+      Kokkos::deep_copy(test_contact_pairs,test_pair_host);
+      AxisymmetricGrains::linear_normal_contacts(
+          test_grains,test_contact_pairs,1.e3,0.0);
       AxisymmetricGrains::kick_drift(test_grains,test_dt);
       AxisymmetricGrains::finish_kick(test_grains,test_dt);
       auto test_grain_x=test_grains.position;
