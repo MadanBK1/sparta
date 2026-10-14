@@ -1,0 +1,46 @@
+name: Axisymmetric grain prototypes
+on:
+  push:
+    branches: [rigid-axisymmetric-kokkos]
+    paths:
+      - 'src/axisymmetric_*.h'
+      - 'src/KOKKOS/kokkos_*grain*.h'
+      - 'tests/axisymmetric_rigid/**'
+      - '.github/workflows/axisymmetric-grain-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  geometry-and-impulse:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Standalone C++11 regression tests
+        run: bash tests/axisymmetric_rigid/run_standalone_tests.sh
+
+  kokkos-serial:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: kokkos/kokkos
+          ref: 4.5.01
+          path: _kokkos
+      - name: Build Kokkos (Serial backend)
+        run: |
+          cmake -S _kokkos -B /tmp/kokkos-build \
+            -DCMAKE_INSTALL_PREFIX=/tmp/kokkos-install \
+            -DKokkos_ENABLE_SERIAL=ON \
+            -DKokkos_ENABLE_TESTS=OFF
+          cmake --build /tmp/kokkos-build --parallel 2
+          cmake --install /tmp/kokkos-build
+      - name: Compile and run grain kernels
+        run: |
+          cmake -S tests/axisymmetric_rigid -B /tmp/axis-grain-build \
+            -DCMAKE_PREFIX_PATH=/tmp/kokkos-install
+          cmake --build /tmp/axis-grain-build --parallel 2
+          ctest --test-dir /tmp/axis-grain-build --output-on-failure
+
+# CPU Kokkos compilation is only a portability smoke test.
+# No NVIDIA CUDA, AMD HIP, Intel SYCL, full SPARTA coupling,
+# or numerical gas-grain physics is validated in this workflow.
