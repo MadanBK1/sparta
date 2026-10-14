@@ -33,6 +33,21 @@ inline Hit intersect(double x0, double r0, double vx,
   const double r=std::hypot(ry,rz);
   return {true,t,x0+vx*t,r};
 }
+// A finite radial span defines an annular planar face, not an
+// unbounded plane. Both radial limits are measured at collision time.
+inline Hit intersect_annular_face(double x0, double r0, double vx,
+                     double vr, double vtheta, double wall_x0,
+                     double wall_vx, double radius_min,
+                     double radius_max, double dt) {
+  const Hit miss = {false,0.0,0.0,0.0};
+  if (!(radius_min>=0.0 && radius_max>radius_min) ||
+      !std::isfinite(radius_min) || !std::isfinite(radius_max))
+    return miss;
+  const Hit candidate=intersect(x0,r0,vx,vr,vtheta,wall_x0,wall_vx,dt);
+  if (!candidate.hit || candidate.radial_position < radius_min ||
+      candidate.radial_position > radius_max) return miss;
+  return candidate;
+}
 } // namespace AxisymmetricMovingAxialPlane
 } // namespace SPARTA_NS
 #endif
