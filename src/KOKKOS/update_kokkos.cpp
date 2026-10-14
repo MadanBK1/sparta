@@ -583,7 +583,7 @@ void UpdateKokkos::run(int nsteps)
     // checks real OnePart velocity writes and SPARTA device ownership.
     // It is NOT a collision law, not a global grain coupling, and must
     // never be enabled for scientific runs.
-    if (domain->axisymmetric && ntimestep == 100 && particle->nlocal > 0) {
+    if (domain->axisymmetric && ntimestep == 100) {
       particle_kk->sync(Device,PARTICLE_MASK|SPECIES_MASK);
       auto test_particles = particle_kk->k_particles.view_device();
       auto test_species = particle_kk->k_species.view_device();
@@ -591,7 +591,7 @@ void UpdateKokkos::run(int nsteps)
       const int test_cellweighted = cellweightflag;
       double local_reaction = 0.0;
       // Deliberately modify only one representative owned by this rank.
-      Kokkos::parallel_reduce("grain_prescribed_axial_exchange",
+      if (particle->nlocal > 0) Kokkos::parallel_reduce("grain_prescribed_axial_exchange",
         Kokkos::RangePolicy<DeviceType>(0,1),
         KOKKOS_LAMBDA(const int k,double& impulse) {
           const double oldv=test_particles(k).v[0];
@@ -605,9 +605,27 @@ void UpdateKokkos::run(int nsteps)
       double global_reaction=0.0;
       MPI_Allreduce(&local_reaction,&global_reaction,1,
                     MPI_DOUBLE,MPI_SUM,world);
+      // Numerical single-grain recoil test, replicated on all MPI ranks.
+      // This is a temporary Kokkos grain velocity state, NOT a real grain
+      // container or a physically sampled gas/grain collision.
+      const double test_grain_mass = 1.e-6; // kg
+      Kokkos::View<double*,DeviceType> test_grain_vx("grain_test_vx",1);
+      Kokkos::deep_copy(test_grain_vx,0.0);
+      const double grain_test_reaction = global_reaction;
+      Kokkos::parallel_for("grain_prescribed_recoil",
+        Kokkos::RangePolicy<DeviceType>(0,1),
+        KOKKOS_LAMBDA(const int k) {
+          test_grain_vx(k) += grain_test_reaction/test_grain_mass;
+        });
+      auto test_grain_host =
+        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),test_grain_vx);
+      const double grain_velocity = test_grain_host(0);
+      const double budget_residual =
+        test_grain_mass*grain_velocity-global_reaction;
       if (comm->me == 0 && screen)
-        fprintf(screen,"GRAIN_PRESCRIBED_TEST step=%lld reaction_Jx=%.17g\n",
-                (long long)ntimestep,global_reaction);
+        fprintf(screen,
+                "GRAIN_PRESCRIBED_TEST step=%lld reaction_Jx=%.17g grain_vx=%.17g budget_residual=%.17g\n",
+                (long long)ntimestep,global_reaction,grain_velocity,budget_residual);
     }
 #endif
 
