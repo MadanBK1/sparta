@@ -606,7 +606,7 @@ void UpdateKokkos::run(int nsteps)
       MPI_Allreduce(&local_reaction,&global_reaction,1,
                     MPI_DOUBLE,MPI_SUM,world);
       if (comm->me == 0 && screen)
-        fprintf(screen,"GRAIN_PRESCRIBED_TEST step=%lld reaction_Jx=%.17g\\n",
+        fprintf(screen,"GRAIN_PRESCRIBED_TEST step=%lld reaction_Jx=%.17g\n",
                 (long long)ntimestep,global_reaction);
     }
 #endif
