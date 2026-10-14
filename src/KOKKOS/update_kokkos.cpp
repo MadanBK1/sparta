@@ -498,6 +498,14 @@ void UpdateKokkos::run(int nsteps)
   int cellweightflag = 0;
   if (grid->cellweightflag) cellweightflag = 1;
 
+  // Developer-only single-grain state persists for this run invocation.
+  // Not production grain storage, and deliberately absent in normal builds.
+#ifdef SPARTA_GRAIN_PRESCRIBED_AXIAL_TEST
+  Kokkos::View<double*,DeviceType> test_grain_vx("grain_test_vx",1);
+  Kokkos::deep_copy(test_grain_vx,0.0);
+  const double test_grain_mass = 1.e-6; // kg
+#endif
+
   // loop over timesteps
 
   for (int i = 0; i < nsteps; i++) {
@@ -606,11 +614,8 @@ void UpdateKokkos::run(int nsteps)
       MPI_Allreduce(&local_reaction,&global_reaction,1,
                     MPI_DOUBLE,MPI_SUM,world);
       // Numerical single-grain recoil test, replicated on all MPI ranks.
-      // This is a temporary Kokkos grain velocity state, NOT a real grain
-      // container or a physically sampled gas/grain collision.
-      const double test_grain_mass = 1.e-6; // kg
-      Kokkos::View<double*,DeviceType> test_grain_vx("grain_test_vx",1);
-      Kokkos::deep_copy(test_grain_vx,0.0);
+      // State persists within this run() call. It is still NOT a real
+      // grain container or physically sampled gas/grain collision.
       const double grain_test_reaction = global_reaction;
       Kokkos::parallel_for("grain_prescribed_recoil",
         Kokkos::RangePolicy<DeviceType>(0,1),
