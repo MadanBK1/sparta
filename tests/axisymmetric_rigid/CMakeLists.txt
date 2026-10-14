@@ -12,7 +12,8 @@ foreach(t IN ITEMS
   test_kokkos_grain_gas_indexed_exchange
   test_kokkos_grain_mean_field_partial_exchange
   test_kokkos_grain_particle_momentum_audit
-  test_kokkos_grain_momentum_budget_audit)
+  test_kokkos_grain_momentum_budget_audit
+  test_kokkos_grain_onepart_axial_exchange)
   add_executable(${t} ${t}.cpp)
   target_compile_features(${t} PRIVATE cxx_std_17)
   target_include_directories(${t} PRIVATE ${PROJECT_SOURCE_DIR}/../../src/KOKKOS)
