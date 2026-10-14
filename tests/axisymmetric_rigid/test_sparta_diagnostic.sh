@@ -40,11 +40,15 @@ if abs(1.e-6*velocity-reaction)>1.e-10*abs(reaction):
     raise SystemExit('Prescribed gas-grain momentum exchange failed')
 if abs(residual)>1.e-10*abs(reaction):
     raise SystemExit('Prescribed gas-grain reported budget nonzero')
-persistence=re.findall(r'GRAIN_PERSISTENCE_TEST step=(\d+) grain_vx=([^\s]+)',log)
+persistence=re.findall(r'GRAIN_PERSISTENCE_TEST step=(\d+) grain_vx=([^\s]+) grain_x=([^\s]+)',log)
 if not persistence or int(persistence[-1][0])!=101:
     raise SystemExit('Missing next-step device grain persistence check')
 if not math.isclose(float(persistence[-1][1]),velocity,rel_tol=1.e-12,abs_tol=0.):
     raise SystemExit('Kokkos grain state did not persist to the next timestep')
+position=float(persistence[-1][2])
+if not math.isfinite(position) or not math.isclose(position,velocity*1.e-6,rel_tol=1.e-10,abs_tol=1.e-25):
+    raise SystemExit(f'Grain free-flight displacement incorrect: {position}')
+
 
 
 
