@@ -625,7 +625,7 @@ void UpdateKokkos::run(int nsteps)
                     MPI_DOUBLE,MPI_SUM,world);
       if (comm->me == 0 && screen)
         fprintf(screen,
-                "GRAIN_DIAGNOSTIC step=%lld molecules=%.17g gas_px=%.17g translational_E=%.17g\\n",
+                "GRAIN_DIAGNOSTIC step=%lld molecules=%.17g gas_px=%.17g translational_E=%.17g\n",
                 (long long) ntimestep,grain_audit_count,
                 grain_audit_global,grain_audit_energy);
     }
