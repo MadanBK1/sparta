@@ -67,7 +67,7 @@ jobs:
         run: |
           cmake -S cmake -B /tmp/sparta-grain-audit-build \
             -C cmake/presets/kokkos_mpi_only.cmake \
-            -DCMAKE_CXX_FLAGS=-DSPARTA_GRAIN_READONLY_DIAGNOSTIC \
+            -DCMAKE_CXX_FLAGS='-DSPARTA_GRAIN_READONLY_DIAGNOSTIC -DSPARTA_GRAIN_PRESCRIBED_AXIAL_TEST' \
             -DKokkos_ENABLE_SERIAL=ON \
             -DKokkos_ENABLE_OPENMP=OFF \
             -DSPARTA_ENABLE_TESTING=OFF
