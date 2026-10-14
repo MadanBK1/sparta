@@ -78,3 +78,5 @@ jobs:
           find /tmp/sparta-grain-audit-build -type f \
             \( -name 'spa_*' -o -name 'sparta' \) -executable -print | tee /tmp/sparta-grain-executables.txt
           test -s /tmp/sparta-grain-executables.txt
+      - name: Run instrumented axisymmetric DSMC smoke test
+        run: bash tests/axisymmetric_rigid/test_sparta_diagnostic.sh /tmp/sparta-grain-audit-build
