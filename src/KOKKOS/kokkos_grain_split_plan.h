@@ -20,7 +20,7 @@ void plan(const WeightView& physical_weight,const CountView& impact_count,
       const double w=physical_weight(i);
       const double k=static_cast<double>(impact_count(i));
       if (!(w>0.0 && k>=0.0 && k<=w) ||
-          !(w<Kokkos::Experimental::infinity_v<double>)) {
+          !(w<=1.e300)) {
         slots(i)=-1;remaining(i)=-1.0;colliding(i)=-1.0;
         return;
       }
