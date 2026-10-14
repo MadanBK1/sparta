@@ -501,8 +501,14 @@ void UpdateKokkos::run(int nsteps)
   // Developer-only single-grain state persists for this run invocation.
   // Not production grain storage, and deliberately absent in normal builds.
 #ifdef SPARTA_GRAIN_PRESCRIBED_AXIAL_TEST
+  // Development-only axial position, velocity, impulse and mass.
+  // Not connected to a surface geometry, contact model or real grain.
   Kokkos::View<double*,DeviceType> test_grain_vx("grain_test_vx",1);
+  Kokkos::View<double*,DeviceType> test_grain_x("grain_test_x",1);
+  Kokkos::View<double*,DeviceType> test_grain_impulse("grain_test_impulse",1);
   Kokkos::deep_copy(test_grain_vx,0.0);
+  Kokkos::deep_copy(test_grain_x,0.0);
+  Kokkos::deep_copy(test_grain_impulse,0.0);
   const double test_grain_mass = 1.e-6; // kg
 #endif
 
@@ -617,6 +623,7 @@ void UpdateKokkos::run(int nsteps)
       // State persists within this run() call. It is still NOT a real
       // grain container or physically sampled gas/grain collision.
       const double grain_test_reaction = global_reaction;
+      Kokkos::deep_copy(test_grain_impulse,grain_test_reaction);
       Kokkos::parallel_for("grain_prescribed_recoil",
         Kokkos::RangePolicy<DeviceType>(0,1),
         KOKKOS_LAMBDA(const int k) {
@@ -632,13 +639,23 @@ void UpdateKokkos::run(int nsteps)
                 "GRAIN_PRESCRIBED_TEST step=%lld reaction_Jx=%.17g grain_vx=%.17g budget_residual=%.17g\n",
                 (long long)ntimestep,global_reaction,grain_velocity,budget_residual);
     }
-    // Persistence check: the device grain state survives to the next step.
+    // Development-only free flight begins after the prescribed impulse.
+    // The diagnostic grain is not used to alter DSMC collision geometry.
     if (domain->axisymmetric && ntimestep == 101) {
-      auto grain_after_step = Kokkos::create_mirror_view_and_copy(
+      const double test_dt=update->dt;
+      Kokkos::parallel_for("grain_test_drift",
+        Kokkos::RangePolicy<DeviceType>(0,1),
+        KOKKOS_LAMBDA(const int k) {
+          test_grain_x(k) += test_grain_vx(k)*test_dt;
+        });
+      auto grain_after_step=Kokkos::create_mirror_view_and_copy(
         Kokkos::HostSpace(),test_grain_vx);
-      if (comm->me == 0 && screen)
-        fprintf(screen,"GRAIN_PERSISTENCE_TEST step=%lld grain_vx=%.17g\n",
-                (long long)ntimestep,grain_after_step(0));
+      auto grain_x_after_step=Kokkos::create_mirror_view_and_copy(
+        Kokkos::HostSpace(),test_grain_x);
+      if(comm->me==0 && screen)
+        fprintf(screen,
+          "GRAIN_PERSISTENCE_TEST step=%lld grain_vx=%.17g grain_x=%.17g\\n",
+          (long long)ntimestep,grain_after_step(0),grain_x_after_step(0));
     }
 #endif
 
