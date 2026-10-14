@@ -26,7 +26,7 @@ import math
 import re
 import sys
 log=open(sys.argv[1],encoding='utf-8',errors='replace').read()
-prescribed=re.findall(r'GRAIN_PRESCRIBED_TEST step=(\d+) reaction_Jx=([^\\s]+)',log)
+prescribed=re.findall(r'GRAIN_PRESCRIBED_TEST step=(\d+) reaction_Jx=([^\s]+)',log)
 if not prescribed or int(prescribed[-1][0])!=100:
     raise SystemExit('Missing prescribed real-particle axial write test')
 reaction=float(prescribed[-1][1])
