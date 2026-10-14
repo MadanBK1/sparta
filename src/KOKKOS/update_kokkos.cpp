@@ -590,7 +590,7 @@ void UpdateKokkos::run(int nsteps)
       const int grain_audit_weighted = cellweightflag;
       double grain_audit_local = 0.0;
       Kokkos::parallel_reduce("grain_readonly_axial_momentum",
-        Kokkos::RangePolicy<DeviceType::execution_space>(0,particle->nlocal),
+        Kokkos::RangePolicy<DeviceType>(0,particle->nlocal),
         KOKKOS_LAMBDA(const int j,double& subtotal) {
           const auto p = grain_audit_particles(j);
           const double w = grain_audit_weighted ? p.weight : 1.0;
@@ -601,7 +601,7 @@ void UpdateKokkos::run(int nsteps)
       MPI_Allreduce(&grain_audit_local,&grain_audit_global,1,
                     MPI_DOUBLE,MPI_SUM,world);
       if (comm->me == 0 && screen)
-        fprintf(screen,"GRAIN_DIAGNOSTIC step=%lld gas_px=%.17g\\n",
+        fprintf(screen,"GRAIN_DIAGNOSTIC step=%lld gas_px=%.17g\n",
                 (long long) ntimestep,grain_audit_global);
     }
 #endif
