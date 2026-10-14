@@ -11,6 +11,7 @@ on:
       - 'src/grain_exposure_reference.h'
       - 'src/grain_axisymmetric_cell_reference.h'
       - 'src/grain_annular_encounter_diagnostic.h'
+      - 'src/grain_weighted_split_reference.h'
       - 'src/KOKKOS/kokkos_*grain*.h'
       - 'tests/axisymmetric_rigid/**'
       - '.github/workflows/axisymmetric-grain-tests.yml'
