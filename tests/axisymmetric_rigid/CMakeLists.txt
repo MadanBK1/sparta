@@ -7,7 +7,8 @@ foreach(t IN ITEMS
   test_kokkos_grain_contact
   test_kokkos_grain_wall_contact
   test_kokkos_grain_impulse_events
-  test_kokkos_grain_impulse_force)
+  test_kokkos_grain_impulse_force
+  test_kokkos_grain_paired_collision)
   add_executable(${t} ${t}.cpp)
   target_compile_features(${t} PRIVATE cxx_std_17)
   target_include_directories(${t} PRIVATE ${PROJECT_SOURCE_DIR}/../../src/KOKKOS)
