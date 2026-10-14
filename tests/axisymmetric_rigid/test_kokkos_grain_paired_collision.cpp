@@ -26,6 +26,16 @@ int main(int argc,char**argv) {
   Kokkos::deep_copy(e.gas_molecular_mass,m);
   Kokkos::deep_copy(e.physical_weight,w);
   Kokkos::deep_copy(grain,0.);
+  SPARTA_NS::AxisymmetricGrains::validate_paired_collisions(e,gas,grain);
+  // Duplicate gas IDs are unsafe for the parallel update; reject them.
+  ix(1)=0;
+  Kokkos::deep_copy(e.gas_index,ix);
+  bool rejected=false;
+  try { SPARTA_NS::AxisymmetricGrains::validate_paired_collisions(e,gas,grain); }
+  catch(const std::invalid_argument&) { rejected=true; }
+  if(!rejected) fail=1;
+  ix(1)=1;Kokkos::deep_copy(e.gas_index,ix);
+  SPARTA_NS::AxisymmetricGrains::validate_paired_collisions(e,gas,grain);
   SPARTA_NS::AxisymmetricGrains::apply_paired_collisions(e,gas,grain);
   auto gi=Kokkos::create_mirror_view(grain);
   Kokkos::deep_copy(gi,grain);Kokkos::deep_copy(g,gas);
