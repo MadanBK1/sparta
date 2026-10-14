@@ -20,6 +20,7 @@
 #include <map>
 #include <algorithm>
 #include "fix_rigid.h"
+#include "axisymmetric_body_geometry.h"
 #include "update.h"
 #include "domain.h"
 #include "surf.h"
@@ -2068,6 +2069,32 @@ void FixRigid::update_surf_copies()
 
 void FixRigid::body_properties(double density)
 {
+  // Initial geometry-only integration for future axisymmetric rigid bodies.
+  // The constructor still rejects axisymmetric domains until moving-surface
+  // transport, cut-cell remapping and impulse weighting are validated.
+  // In SPARTA axisym x is axial and y is radius; a profile revolves about x.
+  if (domain->axisymmetric) {
+    std::vector<AxisymmetricBodyGeometry::Point> polygon;
+    polygon.reserve(nsurf);
+    for (int i=0; i<nsurf; ++i)
+      polygon.push_back({bodypt[i][0][0],bodypt[i][0][1]});
+
+    // Preserve SPARTA's fatal-error convention instead of propagating
+    // exceptions through MPI initialization.
+    try {
+      const auto p=AxisymmetricBodyGeometry::compute(polygon,density);
+      massbody=p.mass;
+      xcm[0]=p.xcm;
+      xcm[1]=xcm[2]=0.0;
+      moi[0]=p.inertia_axial;
+      moi[1]=moi[2]=p.inertia_transverse;
+      moi[3]=moi[4]=moi[5]=0.0;
+    } catch (const std::exception&) {
+      error->all(FLERR,"Fix rigid invalid axisymmetric solid profile");
+    }
+    return;
+  }
+
   int i,j,k;
   double measure = 0.0;              // volume (3d) or area (2d)
   double first[3];                   // integral of x over the body
