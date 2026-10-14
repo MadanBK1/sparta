@@ -13,6 +13,7 @@ on:
       - 'src/grain_annular_encounter_diagnostic.h'
       - 'src/grain_weighted_split_reference.h'
       - 'src/grain_dsmc_mass_reference.h'
+      - 'src/grain_momentum_budget.h'
       - 'src/KOKKOS/kokkos_*grain*.h'
       - 'tests/axisymmetric_rigid/**'
       - '.github/workflows/axisymmetric-grain-tests.yml'
