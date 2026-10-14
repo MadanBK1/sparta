@@ -576,6 +576,36 @@ void UpdateKokkos::run(int nsteps)
 
 
 
+#ifdef SPARTA_GRAIN_READONLY_DIAGNOSTIC
+    // Opt-in diagnostic ONLY, with no particle or grain state modifications.
+    // Prints globally reduced axial gas momentum every 100 timesteps.
+    // Uses SPARTA's existing representative-mass convention.
+    // This build-time flag is OFF by default; never use it to imply
+    // that the unimplemented grain collision operator is active.
+    if (domain->axisymmetric && ntimestep % 100 == 0) {
+      particle_kk->sync(Device,PARTICLE_MASK|SPECIES_MASK);
+      auto grain_audit_particles = particle_kk->k_particles.view_device();
+      auto grain_audit_species = particle_kk->k_species.view_device();
+      const double grain_audit_fnum = fnum;
+      const int grain_audit_weighted = cellweightflag;
+      double grain_audit_local = 0.0;
+      Kokkos::parallel_reduce("grain_readonly_axial_momentum",
+        Kokkos::RangePolicy<DeviceType::execution_space>(0,particle->nlocal),
+        KOKKOS_LAMBDA(const int j,double& subtotal) {
+          const auto p = grain_audit_particles(j);
+          const double w = grain_audit_weighted ? p.weight : 1.0;
+          subtotal += grain_audit_fnum *
+                      grain_audit_species(p.ispecies).mass * w * p.v[0];
+        },grain_audit_local);
+      double grain_audit_global = 0.0;
+      MPI_Allreduce(&grain_audit_local,&grain_audit_global,1,
+                    MPI_DOUBLE,MPI_SUM,world);
+      if (comm->me == 0 && screen)
+        fprintf(screen,"GRAIN_DIAGNOSTIC step=%lld gas_px=%.17g\\n",
+                (long long) ntimestep,grain_audit_global);
+    }
+#endif
+
     // diagnostic fixes
 
     if (n_end_of_step) {
