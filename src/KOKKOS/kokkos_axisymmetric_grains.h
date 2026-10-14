@@ -80,6 +80,27 @@ void linear_normal_contacts(State<ExecSpace>& state, const PairView& pairs,
       Kokkos::atomic_add(&f(j,1), fn*ny);
     });
 }
+// Static half-space contact for grain centers. Allowed centers have
+// n dot x >= offset + radius. (nx,ny) MUST be a unit normal supplied by
+// the caller. The wall reaction is not accumulated here; this model is
+// therefore not a complete momentum-conserving solid-wall subsystem.
+// This kernel handles geometrical contact only, not gas-surface collisions.
+template<class ExecSpace>
+void linear_plane_contacts(State<ExecSpace>& state,
+                           double nx, double ny, double offset,
+                           double stiffness, double damping) {
+  auto x=state.position, v=state.velocity, f=state.force, r=state.radius;
+  Kokkos::parallel_for("grain_linear_plane_contacts",
+    Kokkos::RangePolicy<ExecSpace>(0,state.n), KOKKOS_LAMBDA(int i) {
+      const double gap=nx*x(i,0)+ny*x(i,1)-offset-r(i);
+      if (gap>=0.0) return;
+      const double vn=nx*v(i,0)+ny*v(i,1);
+      double fn=stiffness*(-gap)-damping*vn;
+      if (fn<0.0) fn=0.0;
+      Kokkos::atomic_add(&f(i,0),fn*nx);
+      Kokkos::atomic_add(&f(i,1),fn*ny);
+    });
+}
 // A force kernel must refresh forces between kick_drift and finish_kick.
 // All mass entries must be positive; setup is responsible for validating.
 } // AxisymmetricGrains
